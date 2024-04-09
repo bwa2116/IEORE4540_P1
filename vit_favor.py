@@ -108,7 +108,7 @@ class AttentionHead(nn.Module):
         attention_scores = attention_scores / math.sqrt(self.attention_head_size)
         
         # Apply softmax to obtain attention probabilities
-        attention_probs = nn.functional.softmax(attention_scores, dim=-1)
+        # attention_probs = nn.functional.softmax(attention_scores, dim=-1)
         
         # Apply relu to obtain attention probabilities
         attention_probs = nn.functional.relu(attention_scores)
