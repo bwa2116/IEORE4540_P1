@@ -173,7 +173,7 @@ class MultiHeadAttention(nn.Module):
     This module is used in the TransformerEncoder module.
     """
 
-    def __init__(self, config):
+    def __init__(self, config, input_size):
         super().__init__()
         self.hidden_size = config["hidden_size"]
         self.num_attention_heads = config["num_attention_heads"]
@@ -184,11 +184,10 @@ class MultiHeadAttention(nn.Module):
         self.qkv_bias = config["qkv_bias"]
         # Create a list of attention heads
         self.heads = nn.ModuleList([])
-        self.input_size = None  # Initialize input_size
         for _ in range(self.num_attention_heads):
             head = AttentionHead(
                 self.hidden_size,
-                input_size=None,  # Placeholder for input_size
+                input_size=input_size,  # Pass the correct input_size to each attention head
                 num_random_features=32,
                 dropout=config["attention_probs_dropout_prob"],
                 bias=self.qkv_bias
@@ -200,26 +199,22 @@ class MultiHeadAttention(nn.Module):
         self.output_dropout = nn.Dropout(config["hidden_dropout_prob"])
 
     def forward(self, x, output_attentions=False):
-        # Calculate input_size dynamically using x.size()
-        if self.input_size is None:
-            self.input_size = x.size(-1)  # Get the last dimension of the input tensor
-            # Initialize attention heads with the correct input_size
-            for head in self.heads:
-                head.input_size = self.input_size
-        
+        # Calculate the input size dynamically using the size of the input tensor
+        input_size = x.size(-1)  # Get the last dimension of the input tensor
         # Calculate the attention output for each attention head
         attention_outputs = [head(x) for head in self.heads]
         # Concatenate the attention outputs from each attention head
-        attention_output = torch.cat([attention_output for attention_output, _ in attention_outputs], dim=-1)
+        attention_output = torch.cat([output for output, _ in attention_outputs], dim=-1)
         # Project the concatenated attention output back to the hidden size
         attention_output = self.output_projection(attention_output)
         attention_output = self.output_dropout(attention_output)
         # Return the attention output and the attention probabilities (optional)
         if not output_attentions:
-            return (attention_output, None)
+            return attention_output
         else:
-            attention_probs = torch.stack([attention_probs for _, attention_probs in attention_outputs], dim=1)
+            attention_probs = torch.stack([probs for _, probs in attention_outputs], dim=1)
             return (attention_output, attention_probs)
+
 
 
 class MLP(nn.Module):
