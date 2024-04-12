@@ -173,7 +173,7 @@ class MultiHeadAttention(nn.Module):
     This module is used in the TransformerEncoder module.
     """
 
-    def __init__(self, config, x):
+    def __init__(self, config):
         super().__init__()
         # self.x = x
         self.hidden_size = config["hidden_size"]
