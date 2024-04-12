@@ -175,7 +175,7 @@ class MultiHeadAttention(nn.Module):
 
     def __init__(self, config, x):
         super().__init__()
-        self.x = x
+        # self.x = x
         self.hidden_size = config["hidden_size"]
         self.num_attention_heads = config["num_attention_heads"]
         # The attention head size is the hidden size divided by the number of attention heads
