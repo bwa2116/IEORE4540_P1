@@ -128,6 +128,7 @@ def visualize_attention(model, dataset, output=None, device="cuda"):
         testset = torchvision.datasets.MNIST(root='./data',
                                              train=False, download=True, 
                                              transform=transforms.Compose(transforms.Resize(img_size))
+                                            )
         classes = ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
         
         # Pick 30 samples randomly
