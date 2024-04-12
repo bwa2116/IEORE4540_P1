@@ -1,4 +1,4 @@
-patch_size = 16
+patch_size = 4
 
 num_hidden_layers = 4
 num_attention_heads = 8
@@ -36,7 +36,7 @@ MNIST = {
     "hidden_dropout_prob": hidden_dropout_prob,
     "attention_probs_dropout_prob": attention_probs_dropout_prob,
     "initializer_range": initializer_range,
-    "image_size": 32,
+    "image_size": 28,
     "num_classes": 10,
     "num_channels": 1,
     "qkv_bias": qkv_bias,
