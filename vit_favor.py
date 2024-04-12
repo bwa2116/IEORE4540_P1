@@ -187,11 +187,10 @@ class MultiHeadAttention(nn.Module):
         for _ in range(self.num_attention_heads):
             head = AttentionHead(
                 self.hidden_size,
-                self.attention_head_size,
-                config["attention_probs_dropout_prob"],
                 input_size = (config["image_size"]**2) * config["num_channels"],
-                num_random_features=32, 
-                self.qkv_bias
+                num_random_features = 32, 
+                dropout =config["attention_probs_dropout_prob"],
+                bias = self.qkv_bias
             )
             self.heads.append(head)
         # Create a linear layer to project the attention output back to the hidden size
