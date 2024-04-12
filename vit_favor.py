@@ -189,7 +189,7 @@ class MultiHeadAttention(nn.Module):
             head = AttentionHead(
                 self.hidden_size,
                 # input_size = (config["image_size"]**2) * config["num_channels"],
-                input_size = x.size()
+                input_size = x.size(),
                 num_random_features = 32, 
                 dropout =config["attention_probs_dropout_prob"],
                 bias = self.qkv_bias
