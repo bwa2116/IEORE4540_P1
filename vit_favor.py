@@ -106,7 +106,7 @@ class FavorPlusAttentionHead(nn.Module):
         return (attention_output, attention_scores)
 
 
-class FavorPlusMultiHeadAttention(nn.Module):
+class MultiHeadAttention(nn.Module):
     """
     Multi-head attention module using Favor+ attention mechanism with random feature sampling.
     """
