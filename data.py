@@ -77,7 +77,7 @@ def load_data(name, img_size,
 
 
 def cifar10(
-    img_size=(32, 32),
+    img_size=(28, 28),
     batch_size=4, num_workers=2,
     train_size=None,
     test_size=None
