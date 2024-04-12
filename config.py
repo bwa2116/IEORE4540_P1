@@ -1,4 +1,4 @@
-patch_size = 4
+patch_size = 16
 
 num_hidden_layers = 4
 num_attention_heads = 8
