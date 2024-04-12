@@ -147,7 +147,7 @@ def cifar10(
 
 
 def mnist(
-    img_size=(28, 28),
+    img_size=(32, 32),
     batch_size=4, num_workers=2,
     train_size=None, test_size=None
     ):
