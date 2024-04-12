@@ -71,12 +71,7 @@ class Embeddings(nn.Module):
         x = self.dropout(x)
         return x
 
-
-import torch
-import torch.nn as nn
-import math
-
-class FavorPlusAttentionHead(nn.Module):
+class AttentionHead(nn.Module):
     """
     A single attention head using Favor+ attention mechanism with random feature sampling.
     """
