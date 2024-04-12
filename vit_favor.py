@@ -72,21 +72,72 @@ class Embeddings(nn.Module):
         return x
 
 
+# class AttentionHead(nn.Module):
+#     def __init__(self, hidden_size, attention_head_size, dropout, num_random_features=32, bias=True):
+#         super().__init__()
+#         self.hidden_size = hidden_size
+#         self.attention_head_size = attention_head_size
+#         self.num_random_features = num_random_features
+        
+#         # Initialize random feature matrix for approximate softmax
+#         self.random_features = nn.Parameter(torch.randn(num_random_features, attention_head_size) / math.sqrt(attention_head_size))
+        
+#         # Create the query, key, and value projection layers
+#         self.query = nn.Linear(hidden_size, attention_head_size, bias=bias)
+#         self.key = nn.Linear(hidden_size, attention_head_size, bias=bias)
+#         self.value = nn.Linear(hidden_size, attention_head_size, bias=bias)
+    
+#         self.dropout = nn.Dropout(dropout)
+    
+#     def forward(self, x):
+#         # Project the input into query, key, and value
+#         # The same input is used to generate the query, key, and value,
+#         # so it's usually called self-attention.
+#         # (batch_size, sequence_length, hidden_size) -> (batch_size, sequence_length, input_size)
+#         query = self.query(x)
+#         key = self.key(x)
+#         value = self.value(x)
+        
+#         # Calculate the attention scores using random features approximation
+#         # Compute random features for query and key
+#         query_random_features = torch.matmul(query, torch.transpose(self.random_features[:self.num_random_features],0,1))
+#         key_random_features = torch.matmul(key, torch.transpose(self.random_features[:self.num_random_features],0,1))
+        
+#         # Compute attention scores
+#         attention_scores = torch.matmul(query_random_features, key_random_features.transpose(-1, -2))
+#         attention_scores = attention_scores / math.sqrt(self.attention_head_size)
+        
+#         # Apply softmax to obtain attention probabilities
+#         # attention_probs = nn.functional.softmax(attention_scores, dim=-1)
+        
+#         # Apply relu to obtain attention probabilities
+#         attention_probs = nn.functional.relu(attention_scores)
+        
+#         attention_probs = self.dropout(attention_probs)
+        
+#         # Calculate the attention output
+#         attention_output = torch.matmul(attention_probs, value)
+#         return (attention_output, attention_probs)
+
 class AttentionHead(nn.Module):
-    def __init__(self, hidden_size, attention_head_size, dropout, num_random_features=32, bias=True):
+    """
+    A single attention head.
+    This module is used in the MultiHeadAttention module.
+    """
+    def __init__(self, hidden_size, input_size, num_random_features, dropout, bias=True):
         super().__init__()
         self.hidden_size = hidden_size
-        self.attention_head_size = attention_head_size
+        self.input_size = input_size #size of x
         self.num_random_features = num_random_features
         
         # Initialize random feature matrix for approximate softmax
-        self.random_features = nn.Parameter(torch.randn(num_random_features, attention_head_size) / math.sqrt(attention_head_size))
+        self.random_features = nn.Parameter(torch.randn(num_random_features, input_size) / math.sqrt(input_size))
         
         # Create the query, key, and value projection layers
-        self.query = nn.Linear(hidden_size, attention_head_size, bias=bias)
-        self.key = nn.Linear(hidden_size, attention_head_size, bias=bias)
-        self.value = nn.Linear(hidden_size, attention_head_size, bias=bias)
-    
+        self.query = nn.Linear(hidden_size, input_size, bias=bias)
+        self.key = nn.Linear(hidden_size, input_size, bias=bias)
+        self.value = nn.Linear(hidden_size, input_size, bias=bias)
+
         self.dropout = nn.Dropout(dropout)
     
     def forward(self, x):
@@ -100,19 +151,15 @@ class AttentionHead(nn.Module):
         
         # Calculate the attention scores using random features approximation
         # Compute random features for query and key
-        query_random_features = torch.matmul(query, torch.transpose(self.random_features[:self.num_random_features],0,1))
-        key_random_features = torch.matmul(key, torch.transpose(self.random_features[:self.num_random_features],0,1))
+        query_random_features = torch.matmul(query, self.random_features[:self.num_random_features])
+        key_random_features = torch.matmul(key, self.random_features[:self.num_random_features])
         
         # Compute attention scores
         attention_scores = torch.matmul(query_random_features, key_random_features.transpose(-1, -2))
-        attention_scores = attention_scores / math.sqrt(self.attention_head_size)
+        attention_scores = attention_scores / math.sqrt(self.input_size)
         
         # Apply softmax to obtain attention probabilities
-        # attention_probs = nn.functional.softmax(attention_scores, dim=-1)
-        
-        # Apply relu to obtain attention probabilities
-        attention_probs = nn.functional.relu(attention_scores)
-        
+        attention_probs = nn.functional.softmax(attention_scores, dim=-1)
         attention_probs = self.dropout(attention_probs)
         
         # Calculate the attention output
@@ -142,7 +189,8 @@ class MultiHeadAttention(nn.Module):
                 self.hidden_size,
                 self.attention_head_size,
                 config["attention_probs_dropout_prob"],
-                32, 
+                input_size,
+                num_random_features=32, 
                 self.qkv_bias
             )
             self.heads.append(head)
