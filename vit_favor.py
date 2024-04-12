@@ -117,7 +117,7 @@ class MultiHeadAttention(nn.Module):
         # Create a list of attention heads
         self.heads = nn.ModuleList([])
         for _ in range(self.num_attention_heads):
-            head = FavorPlusAttentionHead(
+            head = AttentionHead(
                 self.hidden_size,
                 self.attention_head_size,
                 self.num_random_features,
