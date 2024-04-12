@@ -71,6 +71,10 @@ class Embeddings(nn.Module):
         x = self.dropout(x)
         return x
 
+import torch
+import torch.nn as nn
+import math
+
 class AttentionHead(nn.Module):
     """
     A single attention head using Favor+ attention mechanism with random feature sampling.
@@ -83,12 +87,12 @@ class AttentionHead(nn.Module):
         self.dropout = nn.Dropout(dropout)
         
         # Initialize random projection matrix
-        self.random_matrix = nn.Parameter(torch.randn(self.num_random_features, self.attention_head_size))
+        self.random_matrix = nn.Parameter(torch.randn(self.hidden_size, self.num_random_features))
     
     def forward(self, x):
         # Project the input into random features
-        random_features = torch.matmul(x, self.random_matrix.transpose(0, 1))
-        random_features = random_features / math.sqrt(self.attention_head_size)
+        random_features = torch.matmul(x, self.random_matrix)
+        random_features = random_features / math.sqrt(self.num_random_features)
         
         # Calculate the attention scores using softmax
         attention_scores = torch.softmax(random_features, dim=-1)
