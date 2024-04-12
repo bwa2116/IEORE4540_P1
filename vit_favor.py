@@ -173,8 +173,9 @@ class MultiHeadAttention(nn.Module):
     This module is used in the TransformerEncoder module.
     """
 
-    def __init__(self, config):
+    def __init__(self, config, x):
         super().__init__()
+        self.x = x
         self.hidden_size = config["hidden_size"]
         self.num_attention_heads = config["num_attention_heads"]
         # The attention head size is the hidden size divided by the number of attention heads
@@ -187,7 +188,8 @@ class MultiHeadAttention(nn.Module):
         for _ in range(self.num_attention_heads):
             head = AttentionHead(
                 self.hidden_size,
-                input_size = (config["image_size"]**2) * config["num_channels"],
+                # input_size = (config["image_size"]**2) * config["num_channels"],
+                input_size = x.size()
                 num_random_features = 32, 
                 dropout =config["attention_probs_dropout_prob"],
                 bias = self.qkv_bias
