@@ -29,7 +29,7 @@ CIFAR10 = {
 MNIST = {
     "name": "MNIST",
     "patch_size": patch_size,
-    "hidden_size": 48,
+    "hidden_size": 50,
     "num_hidden_layers": num_hidden_layers,
     "num_attention_heads": num_attention_heads,
     "intermediate_size": 4 * 48,
