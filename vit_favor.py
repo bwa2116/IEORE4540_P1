@@ -108,9 +108,9 @@ class AttentionHead(nn.Module):
         return torch.exp(wtx - xd)/math.sqrt(self.m)
         
     def forward(self, x):
-        kp, qp = self.prm_exp(self.key), self.prm_exp(self.query) # (B, T, m), (B, T, m)
+        kp, qp = self.prm_exp(self.key(x)), self.prm_exp(self.query(x)) # (B, T, m), (B, T, m)
         D =  torch.einsum('bti,bi->bt', qp, kp.sum(dim = 1)).unsqueeze(dim = 2) # (B, T, m) * (B, m) -> (B, T, 1)
-        kptv = torch.einsum('bin,bim->bnm', self.value, kp) #(B, hidden_size, m)
+        kptv = torch.einsum('bin,bim->bnm', self.value(x), kp) #(B, hidden_size, m)
         attention_probs = kptv
         #print(kptv.shape, D.shape)
         attention_output = torch.einsum('bti,bni->btn', qp, kptv)/D.repeat(1, 1, self.hidden_size) #(B, T, hidden_size)/Diag
