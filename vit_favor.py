@@ -120,7 +120,7 @@ class AttentionHead(nn.Module):
         kptv = torch.einsum('bin,bim->bnm', self.value(x), kp) #(B, hidden_size, m)
         attention_probs = kptv
         # print(f'(kptv,qp,D) {(kptv.shape, qp.shape ,D.shape)}')
-        attention_output = torch.einsum('bti,bni->btn', qp, kptv)/D.repeat(1, 1, self.attention_head_size) #(B, T, hidden_size)/Diag
+        attention_output = torch.einsum('bti,bni->btn', qp, kptv)/D.repeat(1, 1, self.attention_head_size) #(B, T, attention_head_size)/Diag
         return (attention_output, attention_probs)
 
 
