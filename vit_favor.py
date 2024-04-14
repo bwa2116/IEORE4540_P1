@@ -32,10 +32,12 @@ class PatchEmbeddings(nn.Module):
         # The layer projects each patch into a vector of size hidden_size
         self.projection = nn.Conv2d(self.num_channels, self.hidden_size, kernel_size=self.patch_size, stride=self.patch_size)
 
-    def forward(self, x):        
+    def forward(self, x):
         # (batch_size, num_channels, image_size, image_size) -> (batch_size, hidden_size, num_patches)
         x = self.projection(x)
+        # print(f'size of x after projection {x.shape}')
         x = x.flatten(2).transpose(1, 2)
+        # print(f'size of x after flattening {x.shape}')
         return x
 
 
@@ -43,7 +45,7 @@ class Embeddings(nn.Module):
     """
     Combine the patch embeddings with the class token and position embeddings.
     """
-        
+
     def __init__(self, config):
         super().__init__()
         self.config = config
@@ -93,27 +95,32 @@ class AttentionHead(nn.Module):
 
         self.proj = nn.Linear(hidden_size*num_attention_heads, hidden_size*num_attention_heads)
         # number of random features
-        self.m = int(32)
-        self.w = nn.Parameter(torch.randn(self.m, hidden_size), requires_grad = False)
+        self.m = int(12)
+        self.w = nn.Parameter(torch.randn(self.m, attention_head_size), requires_grad = False)
 
     def prm_exp(self, x):
         # ==== positive random features for gaussian kernels ====
-        # x = (B, T, hs)
-        # w = (m, hs)
+        # x = (batch_size, num_patches, hidden_size)
+        # w = (m, hidden_size)
         # return : x : B, T, m
         # SM(x, y) = E_w[exp(w^T x - |x|/2) exp(w^T y - |y|/2)]
         # therefore return exp(w^Tx - |x|/2)/sqrt(m)
+        # print(f'size of x {x.shape}')
+        # print(f'size of w {self.w.shape}')
         xd = ((x*x).sum(dim = -1, keepdim = True)).repeat(1, 1, self.m)/2
+        # print(f'size of xd {xd.shape}')
         wtx = torch.einsum('bti,mi->btm', x, self.w)
+        # print(f'size of wtx {wtx.shape}')
         return torch.exp(wtx - xd)/math.sqrt(self.m)
-        
+
     def forward(self, x):
+        # print(f'inside forward {type(x)}')
         kp, qp = self.prm_exp(self.key(x)), self.prm_exp(self.query(x)) # (B, T, m), (B, T, m)
         D =  torch.einsum('bti,bi->bt', qp, kp.sum(dim = 1)).unsqueeze(dim = 2) # (B, T, m) * (B, m) -> (B, T, 1)
         kptv = torch.einsum('bin,bim->bnm', self.value(x), kp) #(B, hidden_size, m)
         attention_probs = kptv
-        #print(kptv.shape, D.shape)
-        attention_output = torch.einsum('bti,bni->btn', qp, kptv)/D.repeat(1, 1, self.hidden_size) #(B, T, hidden_size)/Diag
+        # print(f'(kptv,qp,D) {(kptv.shape, qp.shape ,D.shape)}')
+        attention_output = torch.einsum('bti,bni->btn', qp, kptv)/D.repeat(1, 1, self.attention_head_size) #(B, T, hidden_size)/Diag
         return (attention_output, attention_probs)
 
 
@@ -156,6 +163,7 @@ class MultiHeadAttention(nn.Module):
         # Project the concatenated attention output back to the hidden size
         attention_output = self.output_projection(attention_output)
         attention_output = self.output_dropout(attention_output)
+        # print(f'size of attention_output {attention_output.shape}')
         # Return the attention output and the attention probabilities (optional)
         if not output_attentions:
             return (attention_output, None)
@@ -196,6 +204,7 @@ class Block(nn.Module):
         self.layernorm_2 = nn.LayerNorm(config["hidden_size"])
 
     def forward(self, x, output_attentions=False):
+        # print(f'shape of x in block {x.shape}')
         # Self-attention
         attention_output, attention_probs = \
             self.attention(self.layernorm_1(x), output_attentions=output_attentions)
@@ -205,6 +214,7 @@ class Block(nn.Module):
         mlp_output = self.mlp(self.layernorm_2(x))
         # Skip connection
         x = x + mlp_output
+        # print('exiting block forward')
         # Return the transformer block's output and the attention probabilities (optional)
         if not output_attentions:
             return (x, None)
@@ -227,8 +237,10 @@ class Encoder(nn.Module):
 
     def forward(self, x, output_attentions=False):
         # Calculate the transformer block's output for each block
+
         all_attentions = []
         for block in self.blocks:
+            # print(f'shape of x in encoder for loop {x.shape}')
             x, attention_probs = block(x, output_attentions=output_attentions)
             if output_attentions:
                 all_attentions.append(attention_probs)
@@ -260,10 +272,14 @@ class ViTForClassfication(nn.Module):
         self.apply(self._init_weights)
 
     def forward(self, x, output_attentions=False):
+        # print(f'shape in model of x {x.shape}')
         # Calculate the embedding output
         embedding_output = self.embedding(x)
+        # print(f'shape after embedding of x {x.shape}')
+        # print(f'shape of embedding {embedding_output.shape}')
         # Calculate the encoder's output
         encoder_output, all_attentions = self.encoder(embedding_output, output_attentions=output_attentions)
+        # print(f'shape after encoder of x {x.shape}')
         # Calculate the logits, take the [CLS] token's output as features for classification
         logits = self.classifier(encoder_output[:, 0, :])
         # Return the logits and the attention probabilities (optional)
@@ -271,7 +287,7 @@ class ViTForClassfication(nn.Module):
             return (logits, None)
         else:
             return (logits, all_attentions)
-    
+
     def _init_weights(self, module):
         if isinstance(module, (nn.Linear, nn.Conv2d)):
             torch.nn.init.normal_(module.weight, mean=0.0, std=self.config["initializer_range"])
@@ -292,4 +308,3 @@ class ViTForClassfication(nn.Module):
                 mean=0.0,
                 std=self.config["initializer_range"],
             ).to(module.cls_token.dtype)
-
