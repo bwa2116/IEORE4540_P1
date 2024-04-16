@@ -16,7 +16,7 @@ class Trainer:
         self.exp_name = exp_name
         self.device = device
 
-    def train(self,
+    def train(self, exp_name
               trainloader, testloader,
               epochs, save_model_every_n_epochs=0):
         """
