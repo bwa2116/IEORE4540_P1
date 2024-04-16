@@ -74,57 +74,40 @@ class Embeddings(nn.Module):
         return x
 
 
-class AttentionHead(nn.Module):
+class PerformerReluAttentionHead(nn.Module):
     """
     A single attention head.
     This module is used in the MultiHeadAttention module.
 
     """
-    def __init__(self, hidden_size, attention_head_size, num_attention_heads, dropout, bias=True):
+    def __init__(self, hidden_size, attention_head_size, dropout, bias=True):
         super().__init__()
-        # x --> (batch_size, hidden_size, num_patches)
         self.hidden_size = hidden_size
         self.attention_head_size = attention_head_size
-        self.num_attention_heads = num_attention_heads
         # Create the query, key, and value projection layers
         self.query = nn.Linear(hidden_size, attention_head_size, bias=bias)
         self.key = nn.Linear(hidden_size, attention_head_size, bias=bias)
         self.value = nn.Linear(hidden_size, attention_head_size, bias=bias)
 
         self.dropout = nn.Dropout(dropout)
-
-        self.proj = nn.Linear(hidden_size*num_attention_heads, hidden_size*num_attention_heads)
-        # number of random features
-        self.m = int(12)
-        self.w = nn.Parameter(torch.randn(self.m, attention_head_size), requires_grad = False)
-
-    def prm_exp(self, x):
-        # ==== positive random features for gaussian kernels ====
-        # x = (batch_size, num_patches, hidden_size)
-        # w = (m, hidden_size)
-        # return : x : B, T, m
-        # SM(x, y) = E_w[exp(w^T x - |x|/2) exp(w^T y - |y|/2)]
-        # therefore return exp(w^Tx - |x|/2)/sqrt(m)
-        # print(f'size of x {x.shape}')
-        # print(f'size of w {self.w.shape}')
-        xd = ((x*x).sum(dim = -1, keepdim = True)).repeat(1, 1, self.m)/2
-        # print(f'size of xd {xd.shape}')
-        wtx = torch.einsum('bti,mi->btm', x, self.w)
-        # print(f'size of wtx {wtx.shape}')
-        return torch.exp(wtx - xd)/math.sqrt(self.m)
-
+    
     def forward(self, x):
-        # print(f'inside forward {type(x)}')
-        kp, qp = self.prm_exp(self.key(x)), self.prm_exp(self.query(x)) # (B, T, m), (B, T, m)
-        D =  torch.einsum('bti,bi->bt', qp, kp.sum(dim = 1)).unsqueeze(dim = 2) # (B, T, m) * (B, m) -> (B, T, 1)
-        kptv = torch.einsum('bin,bim->bnm', self.value(x), kp) #(B, hidden_size, m)
-        attention_probs = kptv
-        # print(f'(kptv,qp,D) {(kptv.shape, qp.shape ,D.shape)}')
-        attention_output = torch.einsum('bti,bni->btn', qp, kptv)/D.repeat(1, 1, self.attention_head_size) #(B, T, attention_head_size)/Diag
+        # Project the input into query, key, and value
+        # The same input is used to generate the query, key, and value,
+        # so it's usually called self-attention.
+        # (batch_size, sequence_length, hidden_size) -> (batch_size, sequence_length, attention_head_size)
+        query = self.query(x)
+        key = self.key(x)
+        value = self.value(x)
+        
+        # Calculate the attention output
+        attention_probs = torch.matmul(torch.relu(key).transpose(-1, -2), value)
+        attention_output = torch.matmul(torch.relu(query), attention_probs)
+
         return (attention_output, attention_probs)
 
 
-class MultiHeadAttention(nn.Module):
+class PerformerReluMultiHeadAttention(nn.Module):
     """
     Multi-head attention module.
     This module is used in the TransformerEncoder module.
@@ -142,12 +125,11 @@ class MultiHeadAttention(nn.Module):
         # Create a list of attention heads
         self.heads = nn.ModuleList([])
         for _ in range(self.num_attention_heads):
-            head = AttentionHead(
+            head = PerformerReluAttentionHead(
                 self.hidden_size,
                 self.attention_head_size,
-                self.num_attention_heads,
-                self.qkv_bias,
                 config["attention_probs_dropout_prob"],
+                self.qkv_bias
             )
             self.heads.append(head)
         # Create a linear layer to project the attention output back to the hidden size
@@ -163,7 +145,6 @@ class MultiHeadAttention(nn.Module):
         # Project the concatenated attention output back to the hidden size
         attention_output = self.output_projection(attention_output)
         attention_output = self.output_dropout(attention_output)
-        # print(f'size of attention_output {attention_output.shape}')
         # Return the attention output and the attention probabilities (optional)
         if not output_attentions:
             return (attention_output, None)
@@ -198,7 +179,7 @@ class Block(nn.Module):
 
     def __init__(self, config):
         super().__init__()
-        self.attention = MultiHeadAttention(config)
+        self.attention = PerformerReluMultiHeadAttention(config)
         self.layernorm_1 = nn.LayerNorm(config["hidden_size"])
         self.mlp = MLP(config)
         self.layernorm_2 = nn.LayerNorm(config["hidden_size"])
