@@ -22,9 +22,8 @@ class Trainer:
         """
         Train the model for the specified number of epochs.
         """
-        # TODO:
-        # Better progress bar
-
+        # Print experiment name
+        print(f'This is experiment {exp_name}')
         # Keep track of the losses and accuracies
         train_losses, test_losses, accuracies = [], [], []
         # Train the model
