@@ -13,10 +13,9 @@ class Trainer:
         self.config = config
         self.optimizer = optimizer
         self.loss_fn = loss_fn
-        self.exp_name = exp_name
         self.device = device
 
-    def train(self, exp_name,
+    def train(self,
               trainloader, testloader,
               epochs, save_model_every_n_epochs=0):
         """
