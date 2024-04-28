@@ -90,7 +90,7 @@ class AttentionHead(nn.Module):
         self.query = nn.Linear(hidden_size, attention_head_size, bias=bias)
         self.key = nn.Linear(hidden_size, attention_head_size, bias=bias)
         self.value = nn.Linear(hidden_size, attention_head_size, bias=bias)
-
+        
         self.dropout = nn.Dropout(dropout)
 
         self.proj = nn.Linear(hidden_size*num_attention_heads, hidden_size*num_attention_heads)
@@ -112,7 +112,7 @@ class AttentionHead(nn.Module):
         wtx = torch.einsum('bti,mi->btm', x, self.w)
         # print(f'size of wtx {wtx.shape}')
         return torch.exp(wtx - xd)/math.sqrt(self.m)
-
+        
     def forward(self, x):
         # print(f'inside forward {type(x)}')
         kp, qp = self.prm_exp(self.key(x)), self.prm_exp(self.query(x)) # (B, T, m), (B, T, m)
@@ -121,8 +121,12 @@ class AttentionHead(nn.Module):
         attention_probs = kptv
         # print(f'(kptv,qp,D) {(kptv.shape, qp.shape ,D.shape)}')
         attention_output = torch.einsum('bti,bni->btn', qp, kptv)/D.repeat(1, 1, self.attention_head_size) #(B, T, attention_head_size)/Diag
+        print(f'Size of kp: {kp.shape}')
+        print(f'Size of qp: {qp.shape}')
+        print(f'Size of v: {self.value(x).shape}')
+        
         return (attention_output, attention_probs)
-
+        
 
 class MultiHeadAttention(nn.Module):
     """
